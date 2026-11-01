@@ -38,13 +38,15 @@
 
 \title{No Fixed-Point Combinator from \texorpdfstring{$\mathsf{B}$}{B} and \texorpdfstring{$\mathsf{M}$}{M}, Even up to \texorpdfstring{$\beta\eta$}{beta-eta}-Conversion}
 \titlerunning{No Fixed-Point Combinator from B and M}
-\author{[Authors to be decided]}{Draft, not peer reviewed. AI systems did this work and all reviews so far, and no human has read the proof; see ``Provenance and verification''.}{}{}{}
-\authorrunning{[Authors to be decided]}
-\Copyright{[Authors to be decided]}
+\author{Zhiyang Chen}{Preprint, not peer reviewed. Prepared with AI assistance; see ``Provenance and verification''.}{}{}{}
+\authorrunning{Z.~Chen}
+\Copyright{Zhiyang Chen}
+\hideLIPIcs
 \ccsdesc[500]{Theory of computation~Lambda calculus}
 \keywords{combinatory logic, fixed-point combinator, lambda calculus, non-convertibility, Lean}
 
 \begin{document}
+\hypersetup{pdfsubject={Preprint, not peer reviewed}}
 \maketitle
 
 \begin{abstract}
@@ -456,7 +458,7 @@ Let $\sigma$, $e_c$, $e_L$ be the numbers of $x$ letters in $d$, $c$, $L$, so th
 
 \section{The Lean development}\label{sec:lean}
 
-The closed case of Theorem~\ref{thm:main} is \lean{TBeta.no\_fix\_xr}, with $x$ the constant \lean{Term.x}, which no binder binds and substitution does not touch. From it follow \lean{no\_fixed\_\allowbreak point\_\allowbreak combinator}, \lean{no\_fix\_var} for a free variable in place of the constant, and \lean{no\_weak\_xr} at $\eqw$. Open $Y$ is not in Lean: on the route of the proof, it is the one step by hand. The release is the archive \lean{min2\_final5.tar.gz}, with SHA-256\\ {\small\lean{70d869915b1294807708ba0835bc73cc8ffa9dc35ed74276a53dcadf2443acab}}, for Lean 4.33.1, with no external library; it is in the repository that holds this text, and no DOI exists yet. Its \lean{README.md} gives the one command, \lean{bash scripts/check.sh}, which builds from empty and runs the checks; \lean{Audit.lean} restates the main types, and \lean{TABLE.md} is the full map. Appendix~\ref{app:table} says what a reader must read, gives the line counts, and maps the statements of this text to Lean names.
+The closed case of Theorem~\ref{thm:main} is \lean{TBeta.no\_fix\_xr}, with $x$ the constant \lean{Term.x}, which no binder binds and substitution does not touch. From it follow \lean{no\_fixed\_\allowbreak point\_\allowbreak combinator}, \lean{no\_fix\_var} for a free variable in place of the constant, and \lean{no\_weak\_xr} at $\eqw$. Open $Y$ is not in Lean: on the route of the proof, it is the one step by hand. The release is the archive \lean{min2\_final5.tar.gz}, with SHA-256\\ {\small\lean{70d869915b1294807708ba0835bc73cc8ffa9dc35ed74276a53dcadf2443acab}}, for Lean 4.33.1, with no external library; it is deposited with this text under DOI \lean{10.5281/zenodo.23854830}. Its \lean{README.md} gives the one command, \lean{bash scripts/check.sh}, which builds from empty and runs the checks; \lean{Audit.lean} restates the main types, and \lean{TABLE.md} is the full map. Appendix~\ref{app:table} says what a reader must read, gives the line counts, and maps the statements of this text to Lean names.
 
 \section{Related work}\label{sec:related}
 
@@ -477,7 +479,7 @@ The theorem does not classify bases. Imamura's $\mathrm{Tr}_x$ fails at $\eqb$ t
 \section*{Provenance and verification}\label{sec:provenance}
 \addcontentsline{toc}{section}{Provenance and verification}
 
-AI systems did the work on the proof and on this text, and AI systems did all reviews of it up to this version. These reviews are not independent confirmation. This text has not been peer reviewed. As far as we know, no human has read the formal proof or a written proof in full.
+This work was directed by the author and assisted by AI systems, which were used for proof development, the Lean formalization, drafting and review. The reviews by AI systems are not independent confirmation. The written proof has not been independently checked by a human, and this text has not been peer reviewed.
 
 A proof of the closed case of Theorem~\ref{thm:main} in Lean~4, along the route of this text, is in the release of Section~\ref{sec:lean}. The kernel reports only the standard axioms \lean{propext}, \lean{Classical.choice}, \lean{Quot.sound}. The release has been rebuilt from the archive with \lean{-{}-no-cache}, and \lean{leanchecker} on all modules, and with \lean{-{}-fresh} on the main module, passes. The restatement in \lean{TBeta/Restate.lean} type-checks. All of this ran on one machine with one toolchain, so it is not an independent replay. AI systems compared this text with the formal statements (Appendix~\ref{app:table}); no human has done so.
 

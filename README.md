@@ -1,9 +1,13 @@
 # No fixed-point combinator from B and M, even up to βη-conversion
 
-> **Status: AI-assisted draft, not peer reviewed.**
-> AI systems did the proof work, the Lean formalization, the text and all reviews so far, under human direction.
-> As far as we know, no human has read the formal proof or a written proof in full.
-> The AI reviews are not independent confirmation. Do not cite this result as an established theorem.
+**Author:** Zhiyang Chen
+
+**DOI:** [10.5281/zenodo.23854830](https://doi.org/10.5281/zenodo.23854830)
+
+> **Status: preprint, assisted by AI, not peer reviewed.**
+> This work was directed by the author and assisted by AI systems, which were used for proof development, the Lean formalization, drafting and review.
+> The Lean proof is checked by the Lean kernel. The written proof has not been independently checked by a human.
+> The reviews by AI systems are not independent confirmation. Do not cite this result as an established theorem.
 
 ## Result
 
@@ -54,6 +58,6 @@ To read the theorem, read the definitions in `LeanJudge/Defs.lean`. You do not n
 
 Please report errors in an issue.
 
-## Authors
+## License
 
-To be decided. See the paper's section "Provenance and verification".
+[CC-BY 4.0](https://creativecommons.org/licenses/by/4.0/), for the paper and the Lean proof.
