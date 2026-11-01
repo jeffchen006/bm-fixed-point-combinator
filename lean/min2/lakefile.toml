@@ -1,0 +1,12 @@
+name = "nofp"
+defaultTargets = ["TBeta"]
+
+[[lean_lib]]
+name = "LeanJudge"
+roots = ["LeanJudge"]
+globs = ["LeanJudge.Basic", "LeanJudge.Defs", "LeanJudge.Final"]
+
+[[lean_lib]]
+name = "TBeta"
+roots = ["TBeta"]
+globs = ["TBeta.CR", "TBeta.Core2", "TBeta.PartA", "TBeta.Alive", "TBeta.N", "TBeta.Main", "TBeta.Control", "TBeta.Corollaries", "TBeta.Restate"]

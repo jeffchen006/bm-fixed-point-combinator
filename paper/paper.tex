@@ -1,0 +1,621 @@
+\documentclass[a4paper,english]{lipics-v2021}
+\nolinenumbers
+\usepackage{booktabs}
+\usepackage{longtable}
+
+\newcommand{\B}{\mathsf{B}}
+\newcommand{\M}{\mathsf{M}}
+\newcommand{\I}{\mathsf{I}}
+\newcommand{\Cc}{\mathsf{C}}
+\newcommand{\W}{\mathsf{W}}
+\newcommand{\T}{\mathsf{T}}
+\newcommand{\wred}{\to_{\mathrm{w}}}
+\newcommand{\wreds}{\twoheadrightarrow_{\mathrm{w}}}
+\newcommand{\bred}{\to_{\beta}}
+\newcommand{\breds}{\twoheadrightarrow_{\beta}}
+\newcommand{\hred}{\to_{h}}
+\newcommand{\eqw}{=_{\mathrm{w}}}
+\newcommand{\neqw}{\neq_{\mathrm{w}}}
+\newcommand{\eqb}{=_{\beta}}
+\newcommand{\neqb}{\neq_{\beta}}
+\newcommand{\eqbe}{=_{\beta\eta}}
+\newcommand{\neqbe}{\neq_{\beta\eta}}
+\newcommand{\Dd}[1]{D_{#1}}
+\newcommand{\Del}[1]{\Delta_{#1}}
+\newcommand{\hatw}[1]{\widehat{#1}}
+\newcommand{\up}{{\uparrow}}
+\newcommand{\dg}{\mathrm{deg}}
+\newcommand{\hx}{\mathrm{hx}}
+\newcommand{\rd}{\mathrm{rd}}
+\newcommand{\cnt}[1]{\##1}
+\newcommand{\nb}[1]{\#b_0(#1)}
+\newcommand{\Fam}{\mathcal{F}}
+\newcommand{\Bod}{\mathcal{B}}
+\newcommand{\Hst}{\mathcal{H}}
+\newcommand{\om}{\omega_x}
+\newcommand{\lean}[1]{\texttt{#1}}
+\newcommand{\runin}[1]{\par\smallskip\noindent\textbf{#1}\ }
+
+\title{No Fixed-Point Combinator from \texorpdfstring{$\mathsf{B}$}{B} and \texorpdfstring{$\mathsf{M}$}{M}, Even up to \texorpdfstring{$\beta\eta$}{beta-eta}-Conversion}
+\titlerunning{No Fixed-Point Combinator from B and M}
+\author{[Authors to be decided]}{Draft, not peer reviewed. AI systems did this work and all reviews so far, and no human has read the proof; see ``Provenance and verification''.}{}{}{}
+\authorrunning{[Authors to be decided]}
+\Copyright{[Authors to be decided]}
+\ccsdesc[500]{Theory of computation~Lambda calculus}
+\keywords{combinatory logic, fixed-point combinator, lambda calculus, non-convertibility, Lean}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+A fixed-point combinator is a closed term $Y$ with $Yx = x(Yx)$ for a fresh variable $x$. We prove that no applicative combination of $\B = \lambda fgz.f(gz)$, $\M = \lambda z.zz$ and $\I = \lambda z.z$ is one, even up to $\beta\eta$-conversion; more generally, $Yx \neqbe x^q(Yx)$ for every such $Y$ and every $q \geq 1$, also when $Y$ contains variables other than $x$. The question for $\B$ and $\M$ goes back to Smullyan and is Problem~4 of the TLCA list; at the weak equality of combinatory logic, where it is usually read, Imamura has recently given a negative answer in a preprint, and he asks for the answer at $\beta\eta$, which we give. The near miss $\T = \B\M(\B(\B\M)\B)$ of Statman has the Böhm tree of a fixed-point combinator and is a fixed-point element in every finite $\B\M$-algebra, so neither Böhm trees nor finite algebras can give the separation. Our proof goes as follows: a hypothetical fixed-point equation yields a $\beta$-equation on one word of monomials, the term of that word is $\beta$-equal to a term that copies itself in rounds, and a reduct of that term lies in a family closed under $\beta$-reduction, in which each term determines one pair of indices that a leading $x$ changes. The closed case is formalized in Lean~4, with no external library.
+\end{abstract}
+
+\section{Introduction}\label{sec:intro}
+
+A \emph{fixed-point combinator} is a closed term $Y$ with $Yx = x(Yx)$ for a fresh variable $x$; it gives recursion to the untyped $\lambda$-calculus and to combinatory logic. We study two very small combinators,
+\[
+\B fgz \to f(gz), \qquad \M z \to zz ,
+\]
+where $\B$ composes and $\M$ copies. Whether some applicative combination of them is a fixed-point combinator is a question that goes back to Smullyan and stands as Problem~4 of the TLCA list~\cite{tlca}. What makes it delicate is that each single term does have a fixed point: for every $x$, the term $F_x = \M(\B x\M)$ of Smullyan~\cite[p.~108]{smullyan} satisfies
+\[
+F_x \to \B x\M(\B x\M) \to x(\M(\B x\M)) = xF_x .
+\]
+In the terms of McCune and Wos~\cite[p.~222]{mccunewos}, the fragment has the weak fixed point property, and the open point is the strong one. As Statman~\cite{tlca} and Imamura~\cite[p.~1]{imamura1} note, the obstacle is the selection of a fixed point by a combinator: in $F_x$ the variable $x$ stands to the left of the constant $\M$, and it appears that $x$ cannot be abstracted. With the permuting combinator $\Cc fgz \to fzg$ this is easy, since Smullyan's $\B\M(\Cc\B\M)$~\cite[p.~136]{smullyan} has $\B\M(\Cc\B\M)x \to \M(\Cc\B\M x) \to \M(\B x\M) = F_x$. Our result is the following.
+
+\begin{theorem}\label{thm:main}
+Let $Y$ be built by application from $\B$, $\M$, $\I$ and variables other than $x$, and let $q \geq 1$. Then $Yx \neqbe x^q(Yx)$. In particular, this holds at $\eqb$ and at the weak equality $\eqw$, and no combination of $\B$, $\M$, $\I$ is a fixed-point combinator.
+\end{theorem}
+
+Here $\I z \to z$, and $\eqw$ lies inside $\eqb$, which lies inside $\eqbe$. The closed case is checked in Lean; the passage from open $Y$ to closed $Y$ is one line by hand (Section~\ref{sec:proof}).
+
+\runin{Convention.} Throughout the paper, the symbol $x$ is a reserved constant: no binder is named $x$, substitution never targets $x$, and the word \emph{variable} does not include $x$. For our statement a fresh variable and a constant are the same, because after $\alpha$-renaming a conversion between terms in which $x$ is free uses no binder named $x$; Lean derives the form with a free variable from the form with the constant (\lean{no\_fix\_var}).
+
+\subsection{Why the question resists}\label{sec:hard}
+
+Three facts limit the methods that can work, and the first two concern the term
+\[
+\T = \B\M(\B(\B\M)\B),
+\]
+which Statman~\cite[p.~442]{statman1993} gives, with no proof, as a term with the right Böhm tree that is not a fixed-point combinator. He later adds that ``this can be proved directly''~\cite[p.~2]{statman2011}\cite[p.~114]{statman2017}, at a relation that he does not name. Imamura proves it at $\eqw$~\cite[Section~4.2]{imamura1}, and we know no written proof at $\eqb$ before Proposition~\ref{prop:T} below.
+
+\emph{Böhm trees cannot separate.} For each $n$ the term $\T x$ reduces to $x^nz$ for some $z$ (Section~\ref{sec:idea}), so that $\T x$ and $x(\T x)$ have the same Böhm tree $x(x(x(\cdots)))$. In every $\lambda$-theory that identifies terms with equal Böhm trees, such as $\mathcal{H}^*$~\cite{barendregt}, the term $\T$ therefore is a fixed-point combinator: the answer depends on the theory.
+
+\emph{Finite algebras cannot separate.} Imamura~\cite[Theorem~4.22]{imamura2} shows that $\T$ is a fixed-point element in every finite $\B\M$-algebra, that is, in every magma with a $\B$-element and an $\M$-element. It follows that every congruence of finite index on applicative terms that contains $\eqw$, and in particular one that contains $\eqb$, identifies $\T x$ and $x(\T x)$. An infinite algebra with no fixed-point element exists~\cite[Theorem~0.5]{imamura2}, and it separates at $\eqw$, but its values do not respect $\eqb$.
+
+\emph{A weak separation does not lift by itself.} A failure of $\eqw$ says nothing about $\eqb$, and terms can be $\beta$-equal without being weakly equal, also after application to a fresh variable. Take $s_1 = \B(\B\M\M)$ and $s_2 = \B(\B\M)(\B\M)$. Then $s_1 \eqb s_2$ by law~\eqref{eq:dist} below, whereas $s_1x$ is weakly normal and $s_2x \wred \B\M(\B\M x)$ is weakly normal and different. Head reduction gives $Yx \wreds xz$ with $z \eqb Yx$, not with $z \eqw Yx$, which an appeal to a theorem at $\eqw$ would need.
+
+\subsection{What is known}\label{sec:known}
+
+\begin{center}
+\small
+\begin{tabular}{@{}llll@{}}
+\toprule
+No $Y$ with & Basis & Status & Source\\
+\midrule
+$Yx \wreds x(Yx)$ & $\B,\M$ & proved & Statman 1993~\cite{statman1993}\\
+$Yx \eqw x^q(Yx)$, $q\geq 1$, $x$-free $Y$ & $\B,\M,\I$ & proved (preprint) & Imamura~\cite[Thm.~3.1]{imamura1}\\
+$Yx = x(Yx)$: weak conversion, & $\B,\M,\I$ & claimed; proof fails & Statman 2011~\cite{statman2011}\\
+\qquad with a remark that $\eqbe$ suffices &&&\\
+$Yx \eqbe x^q(Yx)$, $q\geq 1$, $x$-free $Y$ & $\B,\M,\I$ & Theorem~\ref{thm:main} & this paper\\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\emph{The reduction result.} Statman~\cite{statman1993} proves by simple types that no $\B,\M$-combination has $Yx \wreds x(Yx)$; this leaves open the question at conversion.
+
+\emph{The weak result.} Imamura's preprint~\cite{imamura1} gives the negative answer at $\eqw$. His invariant reads, along the leftmost-innermost reduction, the number of $x$ before each contracted $\M$-redex and the number of $x$ in the copied argument. As defined, $\mathrm{Tr}_x$ gives a weakly normal term its normal form, and so it is not $\beta$-invariant, as he says: $\B\I\I \eqb \I$, and the two have different invariants. We do not know whether its trace class is $\beta$-invariant on terms with no weak normal form (Section~\ref{sec:limits}). His Problem~5.1 asks for the answer at $\eqbe$. Theorem~\ref{thm:main} implies the conclusion of his Theorem~3.1, because $\eqw$ is contained in $\eqb$; his proof at $\eqw$ is separate and more direct. Our proof does not use his theorem. Our count on $\T$ is his trace in other coordinates (Section~\ref{sec:invariant}), and the growth of the copied term is his Lemma~3.3. What we add is a family of terms, closed under $\beta$-reduction, on which this pair is defined.
+
+\emph{The failed proof.} An unpublished manuscript of Statman~\cite{statman2011} claims the negative answer, by a typing of polynomials in a fragment of Girard's system, from which $Yx$ would have a normal form. It takes the question to be at weak-beta and says that ``it suffices to consider lambda terms with beta-eta'' (p.~2). Its theorem assumes ``$Xx$ conv.\ $x(Xx)$'' (p.~7), and its first step uses a lemma stated for weak conversion. As Imamura~\cite[p.~2]{imamura1} points out, the typing cannot hold for all polynomials: $\T$ is a polynomial and $\T x$ has no normal form. We have not located the first wrong step. The later chapter~\cite{statman2017} reuses the opening of the manuscript, with ``Here we show that this is not possible'' replaced by ``This is still not known'' (p.~113).
+
+\emph{The present theorem.} We know no earlier proof at $\eqb$ or $\eqbe$; relative to the sources that we read, the first three items below appear to be new. The word form, the first letter and the walk to the first $x$ are Statman's~\cite{statman2017}. The last-leaf property is Statman's~\cite[Lemma~2]{statman1993} and Imamura's~\cite[Lemma~3.2]{imamura1}. The tracking of all $\M$-contractions along one reduction, and the growth of the copied term there, are Imamura's~\cite[Definition~2.2, Corollary~3.4]{imamura1}. Section~\ref{sec:related} has the details.
+
+\subsection{Contributions}
+
+\begin{itemize}
+\item A reduction from the equation for $Y$ at $\eqbe$ to one equation at $\eqb$ on a word of monomials, by head reduction on $\lambda$-terms (Section~\ref{sec:partA}). It extends Statman's lemma on the first argument from weak conversion to $\eqbe$.
+\item A shape theorem: every word of monomials whose term has the Böhm tree $x(x(x\cdots))$ is $\beta$-equal to a term with the round structure of $\T x$ (Section~\ref{sec:partB}). Imamura shows growth along one reduction at $\eqw$; here the conclusion is a term shape at $\eqb$, with a fixed number of new copies of $x$ per round.
+\item For alive core terms, which have equal Böhm trees, a family of terms closed under $\beta$-reduction and a reader that gives each member one pair of indices (Section~\ref{sec:partC}). Since $j$ strictly rises, unique pairs give the contradiction, by the arithmetic of Imamura's Lemma~3.5. Invariants on all $\beta$-reducts are a known method~\cite[p.~2]{endrullis}; to our knowledge this family is new. Section~\ref{sec:idea} shows it on $\T$.
+\item A Lean~4 proof of the closed case by the route of this text (Section~\ref{sec:lean}, Appendix~\ref{app:table}).
+\end{itemize}
+
+\section{The idea, on a near miss}\label{sec:idea}
+
+\subsection{Rounds}\label{sec:rounds}
+
+This run is Imamura's~\cite[Section~4.2]{imamura1}\cite[Example~4.18]{imamura2}, in his notation. Put $A_0 = \B\M(\B x)$ and $A_{n+1} = \B x A_n$. By weak reduction, $\T x$ reaches $\M A_0$ in two steps and $\M A_0$ reaches $\M A_1$ in two more, and for $n \geq 1$, with one $\M$-step and $n+1$ $\B$-steps,
+\[
+\M A_n \wred A_nA_n = \B xA_{n-1}A_n \wred x(A_{n-1}A_n) \wreds x^n(A_0A_n) \wred x^n(\M A_{n+1}).
+\]
+Each \emph{round} thus copies the term $A_n$, which has $n+1$ occurrences of $x$, and prints $n$ copies of $x$. (A term \emph{prints} $x$ when reduction brings it to the form $x\,t$.) Hence $\T x \wreds x^{n(n+1)/2}(\M A_{n+1})$ for each $n$, and $\T x$ has the Böhm tree $x(x(x(\cdots)))$. No term repeats, in contrast with $F_x$.
+
+Why does the copied term grow? Compare $\W fg \to fgg$, where $\B(\B\M\W)\B$~\cite[p.~1]{statman2011} is a fixed-point combinator, and so is the classical $\B(\W\I)(\B\W\B)$ of Curry, Feys and Craig (1958, p.~178, cited through~\cite[Section~4.3]{imamura1}), which reaches the same term $\W(\B x)(\W(\B x))$:
+\[
+\W(\B x)v \to \B xvv \to x(vv), \qquad\text{whereas}\qquad \M(\B xv) \to \B xv(\B xv) \to x(v(\B xv)).
+\]
+$\W$ copies only its second argument, so that the copied term need not grow, while $\M$ copies the whole of $\B xv$, so that the next copy has one more $x$. This is the contrast in Imamura's traces~\cite[Section~4.3]{imamura1}, and he asks for its cause~\cite[Problem~5.1]{imamura2}; we do not answer that question. On $\lambda$-terms, write $\Dd{t} = \lambda w.\,x(tw)$, so that $\B xt \breds \Dd{t}$. Then $v$ in the second reduction does not receive itself: it receives $\Dd{v}$, which is $v$ with one more $x$ on its head path.
+
+\subsection{The invariant}\label{sec:invariant}
+
+Put $f_1 = \lambda y.\,x(y\,\Dd{y})$ and $f_{k+1} = \Dd{f_k} = \lambda w.\,x(f_kw)$. Then $A_n \breds f_{n+1}$, because $\B\M(\B x) \breds \lambda y.\Dd{y}\Dd{y} \bred f_1$, and hence $\T x \breds f_1f_1$. The term $f_k$ prints $k$ copies of $x$ and then passes on its argument $t$ with one more $x$, as $f_kt \breds x^k(t\,\Dd{t})$. Since $\Dd{f_j} = f_{j+1}$, the head step of a term $x^m(f_kf_j)$ is one of two:
+\begin{align*}
+x^m(f_{k+1}f_j) &\bred x^{m+1}(f_kf_j) &&\text{(an $x$ moves out of the left factor),}\\
+x^m(f_1f_j) &\bred x^{m+1}(f_jf_{j+1}) &&\text{(the right factor becomes the left factor, and it grows).}
+\end{align*}
+We read two numbers from $x^m(f_kf_j)$: the number $i = m+k$ of copies of $x$ that come before the right factor reaches the head, and the number $j$ of copies of $x$ that the right factor prints. The first move keeps $(i,j)$. The second adds the $j$ copies of the right factor to the count, so the only change is
+\begin{equation}\label{eq:rule}
+(i,j) \;\longmapsto\; (i+j,\ j+1).
+\end{equation}
+In words, $j$ is the round, and $i$ is the number of $x$ that the term has printed or is committed to print. Along the run of $\T x$, $i$ is a function of $j$, namely $i = 1 + j(j-1)/2$, while $x(\T x)$ has $i$ one too large for its round. Rule~\eqref{eq:rule} has the conserved quantity $\Psi(i,j) = 2i - j(j-1)$, since $2(i+j) - (j+1)j = 2i - j(j-1)$. It is a closed form and no more: as $j$ strictly rises, unique pairs alone give the contradiction below.
+\begin{center}
+\small
+\begin{tabular}{@{}lcccccccc@{}}
+\toprule
+Term & $f_1f_1$ & $x(f_1f_2)$ & $x^2(f_2f_3)$ & $x^3(f_1f_3)$ & $x^4(f_3f_4)$ & $x^5(f_2f_4)$ & $x^6(f_1f_4)$ & $x^7(f_4f_5)$\\
+\midrule
+$(i,j)$ & $(1,1)$ & $(2,2)$ & $(4,3)$ & $(4,3)$ & $(7,4)$ & $(7,4)$ & $(7,4)$ & $(11,5)$\\
+$\Psi(i,j)$ & $2$ & $2$ & $2$ & $2$ & $2$ & $2$ & $2$ & $2$\\
+\bottomrule
+\end{tabular}
+\end{center}
+On $\T$ this pair is Imamura's trace in other coordinates. At his $n$-th $\M$-contraction the term is $x^{d_n}(A_nA_n)$, with $d_n = n(n-1)/2$, and his trace is $(p,r) = (d_n, n+1)$~\cite[p.~14]{imamura1}. Since $A_n \breds f_{n+1}$, our pair is $(i,j) = (p+r,r)$, and on $x^q(\T x)$ we have $\Psi = 2 + 2q$. His trace is read along one reduction. We need one value on every $\beta$-reduct.
+
+An $x$ in front of a term changes $(i,j)$ to $(i+1,j)$ and raises $\Psi$ by two, so $f_1f_1$ has value $2$ and $x^q(f_1f_1)$ has value $2+2q$. If $\T x \eqb x^q(\T x)$, then $f_1f_1 \eqb x^q(f_1f_1)$, Church--Rosser would give these two terms a common reduct, and it is enough to give each of their reducts one value. The difficulty is that $\beta$ also acts inside the factors: $f_2$ reduces to $\lambda w.x(x(w\,\Dd{w}))$, which is no $f_k$. We therefore work with the shapes of all reducts.
+
+\begin{definition}\label{def:Tfamily}
+Let $\Fam_k$, for $k \geq 0$, be the least sets of terms with no free variable (recall that $x$ is a constant) such that
+\[
+\text{(copy)}\quad \lambda u.\,x^k(u\,\Dd{u}) \in \Fam_k, \qquad\qquad \text{(lift)}\quad \lambda u.\,x^m(su) \in \Fam_{m+k} \ \text{ if } s \in \Fam_k.
+\]
+Let $\Hst(m+k,j)$ be the set of terms $x^m(sr)$ with $s \in \Fam_k$ and $r \in \Fam_j$.
+\end{definition}
+
+The index $k$ counts the copies of $x$ on the head path. We have $f_1 \in \Fam_1$ by (copy), and if $t \in \Fam_j$ then $\Dd{t} \in \Fam_{j+1}$ by (lift), so that $f_k \in \Fam_k$ and $f_1f_1 \in \Hst(1,1)$.
+
+\begin{proposition}\label{prop:T}
+For each $q \geq 1$, $\T x \neqb x^q(\T x)$.
+\end{proposition}
+
+\begin{proof}
+A step inside a member of $\Fam_k$ stays in $\Fam_k$: a term of the form (copy) is normal, and in (lift) a step inside $s$ is handled by induction, while contracting $su$ gives $\lambda u.x^{m}(x^{k}(u\,\Dd{u}))$ if $s$ has the form (copy), and $\lambda u.x^{m+m'}(s'u)$ if $s = \lambda v.x^{m'}(s'v)$; each is again in $\Fam_{m+k}$.
+
+Now let $t = x^m(sr) \in \Hst(i,j)$. A step inside $s$ or $r$ keeps $(i,j)$, so only the contraction of $sr$ remains. If $s = \lambda u.x^{i-m}(u\,\Dd{u})$, then $t \bred x^{i}(r\,\Dd{r})$, and as $\Dd{r} \in \Fam_{j+1}$, the result is in $\Hst(i+j,j+1)$: this is rule~\eqref{eq:rule}. If $s = \lambda u.x^{l}(s'u)$, then $t \bred x^{m+l}(s'r)$, which is in $\Hst(i,j)$.
+
+Next, a term has only one pair $(i,j)$. Let $\hx$ count the copies of $x$ on the head path: $\hx(\lambda v.b) = \hx(b)$, $\hx(xe) = \hx(e)+1$, $\hx(fe) = \hx(f)$ for $f \neq x$, and $\hx(v) = \hx(x) = 0$. By induction $\hx = k$ on $\Fam_k$. In $x^m(sr)$ the term $s$ is an abstraction, so that $m$, $s$ and $r$ are determined, and $i = \hx(x^m(sr))$ while $j = \hx(r)$.
+
+Suppose now that $f_1f_1$ and $x^q(f_1f_1)$ have a common reduct $z$. From $f_1f_1 \in \Hst(1,1)$ the term $z$ has value $2$, and from $x^q(f_1f_1) \in \Hst(1+q,1)$ it has value $2+2q$, which contradicts the uniqueness of $(i,j)$.
+\end{proof}
+
+The proof uses one property of $\T$: the right factor grows, so that $j$ identifies the round. For $F_x$ there is no such index, since $\om\om \bred x(\om\om)$ with $\om = \lambda y.x(yy)$ repeats with the same terms. A general proof must find this structure in any candidate, and carry the invariant to the contexts that letters leave around the head path.
+
+\section{Preliminaries}\label{sec:prelim}
+
+\runin{$\lambda$-terms.} Terms are $\lambda$-terms over $x$, up to $\alpha$-conversion, with application to the left. The rules are $(\lambda v.s)t \to_\beta s[t/v]$ and $\lambda v.sv \to_\eta s$ if $v$ is not free in $s$, and they apply in every context; we write $\bred$ for one step, $\breds$ for many, and $\eqb$, $\eqbe$ for the conversions. We use the Church--Rosser theorem for $\beta$ and for $\beta\eta$~\cite{barendregt}: terms equal at $\eqb$ (at $\eqbe$) have a common $\beta$-reduct ($\beta\eta$-reduct). We write $x^nt$ for $x(\cdots x(t)\cdots)$ with $n$ copies of $x$. In a displayed $\lambda w.\ldots$ with another variable or a term $t$ shown, $w$ differs from that variable and is not free in $t$; this applies to $\Dd{t}$ above and to $\Del{y}$, $D$ below.
+
+\runin{Combinators.} We take $\B = \lambda fgz.f(gz)$, $\M = \lambda z.zz$ and $\I = \lambda z.z$ as closed $\lambda$-terms. \emph{Weak reduction} $\wred$ treats them as constants, by the contextual closure of $\B pqr \to p(qr)$, $\M p \to pp$ and $\I p \to p$, and $\eqw$ is the conversion that it generates. A weak step is a sequence of $\beta$-steps, so $\eqw$ implies $\eqb$. A \emph{combination} is a closed term built by application from $\B,\M,\I$.
+
+\runin{Words.} Put $\B^0Z = Z$ and $\B^{n+1}Z = \B(\B^nZ)$. A \emph{letter} is one of $m_n = \B^n\M$, $b_n = \B^n\B$, $x_n = \B^nx$, of \emph{level} $n$; the letters $x_n$ do not occur in Section~\ref{sec:partA}. A \emph{word} is a list of letters. For a word $\pi = l_1\ldots l_r$, put $\pi[t] = l_1(l_2(\cdots(l_rt)))$, and if $r \geq 1$, put $\hatw{\pi} = \B l_1(\B l_2(\cdots(\B l_{r-1}l_r)))$, so that $\hatw{\pi}\,t \eqb \pi[t]$ by $r-1$ $\B$-steps. The terms $\hatw{\pi}$ over $m_n,b_n$ are Statman's polynomials~\cite{statman2011}. For example, $\T = \hatw{\pi}$ for $\pi = m_0\,m_1\,b_0$, and $\pi[x] = \M(\B\M(\B x)) = \M A_0$. Let $\up \pi$ be $\pi$ with each level raised by one. By $\B$-steps, $(\up \pi)[z]\,v \eqb \pi[zv]$.
+
+\runin{A law of $\B$.} For all terms $p,q$,
+\begin{equation}\label{eq:dist}
+\B(\B pq) \eqb \B(\B p)(\B q),
+\end{equation}
+since both sides reduce to $\lambda uv.p(q(uv))$. Statman has it at $\eqbe$~\cite[Fact~2]{statman2017}.
+
+\section{Reduction: from a fixed-point equation to a word}\label{sec:partA}
+
+\begin{proposition}\label{prop:A}
+Let $t$ be a combination and $q \geq 1$, with $tx \eqbe x^q(tx)$. Then there is a word $P$ over $m_n,b_n$ with $P[x] \eqb x^qP[x]$.
+\end{proposition}
+
+Since the hypothesis is at $\eqbe$, not at weak conversion as in Statman's Lemma~6.2.1~\cite{statman2017}, we use head reduction on $\lambda$-terms: a head run from the conversion, the word from the run, and then the removal of $\eta$.
+
+\emph{Head reduction} is $(\lambda v.b)\,e\,\bar e \hred b[e/v]\,\bar e$; it is deterministic, and it does not act under a binder or in an argument. A term is \emph{headed} if it is $y\,\bar e$ with $y$ a variable or $x$. A headed term has no head step, and neither has an abstraction, which is not headed.
+
+The conversion yields a run only after padding: we have $\B\I z \eqbe z$, but the head run of $\B\I z$ stops after two steps at the abstraction $\lambda v.\I(zv)$, which is not headed.
+
+\begin{lemma}\label{lem:reach}
+If $s$ is $\beta\eta$-equal to a headed term, then $s\,\bar l \hred^*$ a headed term, for some list $\bar l$.
+\end{lemma}
+
+\begin{proof}
+This is routine, a form of the fact that a term with a $\beta\eta$-head normal form has a $\beta$-head normal form; we give the proof because our head reduction does not act under binders. By Church--Rosser, $s$ reduces by $\beta$ and $\eta$ to a headed term, for which the conclusion holds, and we show that the conclusion goes backward along each step $t \to u$.
+
+\emph{A $\beta$-step.} We use Takahashi's parallel-reduction method, which is standard. Let $\Rightarrow$ be parallel $\beta$-reduction, which is closed under substitution, and let $\Rightarrow_i$ be its internal part: $\lambda b \Rightarrow_i \lambda b'$ if $b \Rightarrow b'$, $fe \Rightarrow_i f'e'$ if $f \Rightarrow_i f'$ and $e \Rightarrow e'$, and atoms to themselves. If $t \Rightarrow u$, then $t \hred^* K \Rightarrow_i u$ for some $K$. This goes by induction on $t \Rightarrow u$; the one real case is $(\lambda v.b)e \Rightarrow b'[e'/v]$, where $b \hred^* K \Rightarrow_i b'$ and $e \hred^* L \Rightarrow_i e'$ give $(\lambda v.b)e \hred^* K[e/v]$, and a further induction on $K \Rightarrow_i b'$ gives $K[e/v] \hred^* K' \Rightarrow_i b'[e'/v]$, with $e$ taking its run to $L$ if $v$ heads the spine of $K$. Moreover, if $K \Rightarrow_i u$ and $u \hred u'$, then $K \hred K' \Rightarrow u'$, and if $u$ is headed, then so is $K$. By induction on the number of head steps of $u$, if $t \Rightarrow u$ and $u \hred^*$ headed, then $t \hred^*$ headed. This is the form that Lean proves (\lean{par\_factor}, \lean{par\_run\_vh}).
+
+\emph{An $\eta$-step.} Let $\rhd$ be parallel $\eta$, the congruence with also $\lambda v.fv \rhd f'$ if $f \rhd f'$ and $v$ is not free in $f$; it is closed under substitution. We claim that if $t \rhd u$, $t_i \rhd u_i$ and $u\,\bar u \hred^n$ headed, then $t\,\bar t\,\bar l \hred^*$ headed for some $\bar l$, by induction on $n$ and then on $t \rhd u$.
+\begin{itemize}
+\item If $t$ is a variable or $x$, then $t = u$ and $t\,\bar t\,\bar l$ is headed.
+\item If $t = f\,e \rhd f'\,e'$, we put $e$ on the argument list.
+\item If $t = \lambda v.fv \rhd u$ with $f \rhd u$, induction gives $f\,\bar t\,\bar l \hred^*$ headed. After adding the argument $x$ at the end, so that the list is not empty, $t$ with this list makes one head step to $f$ with this list.
+\item If $t = \lambda v.b \rhd \lambda v.b'$, then $\bar u$ is not empty, since an abstraction is not headed. So $u\,e'\,\bar u' \hred b'[e'/v]\,\bar u'$, with $n-1$ further steps, while $t\,e\,\bar t' \hred b[e/v]\,\bar t'$ and $b[e/v] \rhd b'[e'/v]$, and induction on $n$ applies.\qedhere
+\end{itemize}
+\end{proof}
+
+From a run we read the word. Say that a combination $X$ \emph{acts as} a word $\pi$ over $m_n,b_n$ if $Xz \eqbe \pi[z]$ for all $z$. Then $\B,\M,\I$ act as $b_0$, $m_0$ and the empty word, and $\beta$-equal combinations act alike. If $U$ acts as $\pi$, then $\B U$ acts as $\up \pi$: for fresh $v$, $\B Uz\,v \eqb U(zv) \eqbe \pi[zv] \eqb (\up \pi)[z]\,v$, and one $\eta$ on each side removes $v$. If $U,V$ act as $\pi,\pi'$, then $\B UV$ acts as $\pi\pi'$, since $\B UVz \eqb U(Vz) \eqbe \pi[\pi'[z]]$.
+
+The next lemma needs $X$ free of $x$, as in $F_x$ the head can come from $x$ inside $X$. Its first clause fails for the combinator $\Cc\B$, as $\Cc\B\,x\,y\,z$ reduces to $y(xz)$, which brings $y$ to the head and not the first argument $x$. It is stated for arbitrary arguments, because the induction gives $U$ the argument $t_1t_2$ or $Vt_1$.
+
+\begin{lemma}[First argument]\label{lem:first}
+Let $X$ be a combination and $\bar t$ any terms, with $X\,\bar t \hred^n$ headed. Then $\bar t$ has a first term $t_1$, the run passes through $t_1\,\bar s$ for some $\bar s$, and $X$ acts as a word.
+\end{lemma}
+
+\begin{proof}
+By strong induction on $n$. Head reduction gives $\B\,p\,q\,e\,\bar e \hred^3 p(qe)\,\bar e$, $\M\,p\,\bar e \hred p\,p\,\bar e$ and $\I\,p\,\bar e \hred p\,\bar e$, and with too few arguments $\B,\M,\I$ reach an abstraction, which is not headed; therefore the arguments named below exist, and by determinism the run passes through each term named. A combination is either saturated or one of $\B,\M,\I,\B U,\B UV$. If $X$ is saturated, that is, $\B\,p\,q\,e\,\bar e$, $\M\,p\,\bar e$ or $\I\,p\,\bar e$, let $X'$ be the combination $p(qe)\,\bar e$, $p\,p\,\bar e$ or $p\,\bar e$; then $X\,\bar t \hred^j X'\,\bar t$ with $j = 3,1,1$, and we use induction on $X'\,\bar t$. For $X = \M$ the run reaches $t_1\,t_1\,\bar t'$, for $\I$ it reaches $t_1\,\bar t'$, and for $\B$ it reaches $t_1(t_2t_3)\,\bar t'$. For $X = \B U$ we have $\B U\,t_1\,t_2\,\bar t' \hred^3 U(t_1t_2)\,\bar t'$, and by induction on $U$ the run reaches $(t_1t_2)\,\bar s$, and $U$ acts. For $X = \B UV$ we have $\B UV\,t_1\,\bar t' \hred^3 U(Vt_1)\,\bar t'$; induction on $U$ takes the run to $(Vt_1)\,\bar s$ with fewer steps left, and induction on $V$, with arguments $t_1\,\bar s$, takes it to $t_1\,\bar s'$. In each case the rules above show that $X$ acts as a word.
+\end{proof}
+
+Shape and Separation work at $\eqb$, so $\eta$ must go, and it can go because these terms never acquire an $\eta$-redex.
+
+\begin{lemma}[No $\eta$]\label{lem:tidy}
+A $\beta$-reduct of an applicative term over $\B$, $\M$, $x$ and variables has no $\eta$-redex. Hence if $s,s'$ are such terms and $s \eqbe s'$, then $s \eqb s'$.
+\end{lemma}
+
+\begin{proof}
+Call a term \emph{tidy} if for each subterm $\lambda v.b$ the body $b$ is \emph{good}: it is not a variable, and if $b = p\,y$ with $y$ a variable, then $p = y$. (So $\I$ is not tidy, and it must leave first; nor is $\W$, with inner body $(fg)g$.) The terms $\B$, $\M$, $x$ and variables are tidy, as the bodies in $\B$ and $\M$ are abstractions, $f(gz)$ and $zz$, and tidy terms are closed under application. If $e$ is tidy and $b$ is good, then $b[e/v]$ is good: a body that is not an application with a variable as argument keeps its top form, and $yy$ becomes $e'e'$, which is good whether or not $e'$ is a variable. Hence tidy terms are closed under substitution. A $\beta$-step on a tidy term does not give a variable, since $b$ in $(\lambda v.b)e$ is not one. Therefore $\beta$ keeps tidiness. A contracted redex gives a tidy term, and if it was a body, a good one, by the above. For a body $pq$ with a step inside, there are two cases. If the step is in $p$, then $q$ is not a variable, because $q = p$ would be a variable with no step. If the step is in $q$, then the new argument is not a variable. A tidy term has no $\eta$-redex, because $\lambda v.pv$ with $v$ not free in $p$ would require $p = v$. So from a tidy term each $\beta\eta$-step is a $\beta$-step, and the common reduct given by Church--Rosser is reached by $\beta$ alone.
+\end{proof}
+
+\begin{proof}[Proof of Proposition~\ref{prop:A}]
+As $q \geq 1$, the term $tx$ is $\beta\eta$-equal to the headed term $x^q(tx)$. Lemma~\ref{lem:reach} gives $tx\,\bar l \hred^*$ headed, and Lemma~\ref{lem:first} with arguments $x,\bar l$ shows that $t$ acts as a word $P$. Then $tx \eqbe P[x]$, and so $P[x] \eqbe x^q(tx) \eqbe x^qP[x]$. Both terms are applicative over $\B,\M,x$, so Lemma~\ref{lem:tidy} gives $P[x] \eqb x^qP[x]$.
+\end{proof}
+
+\section{Shape: a word with an alive term copies in rounds}\label{sec:partB}
+
+A term $t$ is \emph{alive} if for each $N$ there is $z$ with $t \eqb x^Nz$; equivalently, $t$ has the Böhm tree $x(x(x\cdots))$. By iteration, $t \eqb x^qt$ with $q \geq 1$ implies that $t$ is alive. By Church--Rosser, aliveness is invariant under $\eqb$; if $x^nt$ is alive, so is $t$; and a term $\beta$-equal to an abstraction is not alive, nor is $x$, nor is $x\,t_1\,t_2\ldots t_n$ with $n \geq 2$.
+
+\begin{theorem}[Shape]\label{thm:shape}
+Let $P$ be a word over $m_n,b_n$ such that $P[x]$ is alive. Then there are lists $L$, $c$, $d$ of letters, with an $x$ letter in $d$, such that $P[x] \eqb Q$ for the \emph{core term}
+\[
+Q = L[aa], \qquad a = \lambda y.\,c[\Del{y}\Del{y}], \qquad \Del{y} = \lambda w.\,d[yw].
+\]
+\end{theorem}
+
+Statman's mimid theorem~\cite[Theorem~6.2.1]{statman2017} treats one printed $x$; this theorem treats all of them. From here to the end of the section, $P[x]$ is alive, and $X$ stands for $P[x]$.
+
+\runin{Heights.} Let $\dg(m_n) = 1$, $\dg(b_n) = -1$, $\dg(x_n) = 0$, and let $\dg(\pi)$ be the sum over the letters of $\pi$. A letter is \emph{legal at $\ell$} if $n \leq \ell$ for $m_n$, $n+2 \leq \ell$ for $b_n$, and $n = \ell$ for $x_n$. A word $\pi = l_1\ldots l_r$ \emph{placed from $\ell$} has $l_p$ at \emph{height} $\ell + \dg(l_1\ldots l_{p-1})$, and it \emph{walks from $\ell$} if each letter is legal at its height. The height counts the arguments at this point of the reduction. (Statman's sequences called $g$ and $h$~\cite[p.~118]{statman2017} are our heights and levels.) The \emph{slack} of an $m_n$ at height $p$ is the integer $p - n$.
+
+\runin{States and the fold.} Let $\nb{h}$ be the number of letters $b_0$ in $h$. The \emph{fold} $h\cdot R$ is defined for $h$ with no letter $m_0$ or $x_0$: $(\B^{n+1}Z)\cdot R$ adds the letter $\B^nZ$ on the left of $R$, $b_0\cdot R = \up R$, and $(l_1\ldots l_k)\cdot R = l_1\cdot(\cdots(l_k\cdot R))$. A \emph{state} is a pair $(S,R)$ of words such that $X \eqb S[\M\,\hatw{R}]$ and the last letter of $R$ is an $x$ letter.
+
+\runin{The search.} We look for a state of a special form by a finite search; it is related to $X$ by conversion, and it is not the head reduction of $X$. A state records an $\M$-step that is about to happen, which gives $X \eqb (SR)[\hatw{R}]$, where $SR$ is the list $S$ followed by $R$. Take the rightmost $m_0$ in $SR$, say $SR = S'm_0h$. If this $m_0$ lies in $R$ and $\nb{h} = 0$, we stop: the letters of $h$ then have level at least one, which makes them compositions, and $\M\,g[y]$ for $g = h$ is the term $\Del{y}\Del{y}$ that we want. Otherwise $h[\hatw{R}] \eqb \widehat{h\cdot R}$ gives the next state $(S',\ h\cdot R)$. On each nonterminal transition, either $\dg S$ rises, or it stays and $S$ gets shorter; and $\dg S$ is bounded by the largest slack, which the fold does not raise. So the search stops.
+
+\runin{Examples.} For $\T$, $P = m_0\,m_1\,b_0$, and the fold gives $m_1\cdot(b_0\cdot x_0) = m_0\,x_1$, whose hat is $A_0$; only $x_1$ lies behind its $m_0$, so the search stops at once with $d = x_0$. A longer search comes from $P = m_0\,m_0\,m_1\,m_1\,m_2\,b_1\,b_0\,b_1\,b_0$, whose table can be recomputed by hand from the fold. We do not prove that this $P[x]$ is alive; a head run printed more than $600$ copies of $x$. Here $\rho = 2$ bounds the slacks of $P$.
+\begin{center}
+\small
+\begin{tabular}{@{}lclll@{}}
+\toprule
+$S$ & $\dg S$ & $R$ & $h$, behind the rightmost $m_0$ of $SR$ & $\nb{h}$\\
+\midrule
+$m_0$ & $1$ & $m_0\,m_0\,m_1\,b_0\,b_1\,x_2$ & $m_1\,b_0\,b_1\,x_2$ & $1$\\
+$m_0\,m_0$ & $2$ & $m_0\,b_1\,x_2\,m_1\,m_1\,m_2\,b_1\,b_2\,x_3$ & $b_1\,x_2\,m_1\,m_1\,m_2\,b_1\,b_2\,x_3$ & $0$\\
+\bottomrule
+\end{tabular}
+\end{center}
+In the first row, $SR$ from $0$ has heights $0,1,2,3,4,3,2$, with the $\M$ letters $m_0,m_0,m_0,m_1$ at slacks $0,1,2,2$. The rightmost $m_0$ has height $2$ and $\nb{h} = 1$, so that the pair $(\rho - \dg S,\ \text{length of }S)$ falls from $(1,1)$ to $(0,2)$. The second state stops, with $c$ empty and $d = b_0\,x_1\,m_0\,m_0\,m_1\,b_0\,b_1\,x_2$, which has two $x$ letters.
+
+\runin{Walks.} For $P$ alone, with $\xi = x$ and $\ell = 0$, the next lemma is Statman's condition~\cite[Lemma~6.2.3, Corollary~6.2.2]{statman2017}; we need $x$ letters, any $\xi$ and any $\ell$, because it is used at every state.
+
+\begin{lemma}[List rule]\label{lem:list}
+If $\pi[\xi]\,s_1\ldots s_\ell$ is alive, then $\pi$ walks from $\ell$, and $\pi[\xi]\,s_1\ldots s_\ell \eqb x^n(\xi\,s'_1\ldots s'_{\ell'})$ for some $n$ and $s'$, with $\ell' = \ell + \dg(\pi)$.
+\end{lemma}
+
+\begin{proof}
+By induction on $\pi$. Let $\pi = l\,\pi'$ with $l = \B^nZ$, and put $f = \pi'[\xi]$. With fewer than $n$ arguments, $\B^nZ\,f$ applied to them is $\beta$-equal to an abstraction, so $\ell \geq n$. Put $g = f\,s_1\ldots s_n$; the term is $\beta$-equal to $Z\,g\,s_{n+1}\ldots s_\ell$. If $Z = \M$, this is $\beta$-equal to $g\,g\,s_{n+1}\ldots s_\ell$, so that $f$ has $\ell+1$ arguments. If $Z = \B$, then $\ell \geq n+2$, as it would otherwise be an abstraction, and it is $\beta$-equal to $g\,(s_{n+1}s_{n+2})\,s_{n+3}\ldots s_\ell$, so that $f$ has $\ell - 1$ arguments. If $Z = x$, then $\ell = n$ because $x$ takes one argument, the term is $x\,g$, and $f$ has $\ell$ arguments. In each case the induction hypothesis on $\pi'$ applies, with a printed $x$ removed if there is one.
+\end{proof}
+
+Three remarks on walks follow. (a) A word with an $x$ letter walks from at most one $\ell$, since the level of an $x$ letter fixes its height and so the start. (b) A walk from $\ell \geq 1$ has no letter $x_0$, as heights stay at least one: $m_n$ raises the height, $x_n$ keeps it, and $b_n$ needs height at least two. (c) A walk from $0$ with no letter $m_0$ has degree $0$, as at height $0$ only $m_0$ and $x_0$ are legal.
+
+\begin{lemma}[Fold]\label{lem:pop}
+Let $h$ have no letter $m_0$ or $x_0$, and let $R$ be non-empty. Then:
+\begin{enumerate}
+\item[(a)] $h[\hatw{R}] \eqb \widehat{h\cdot R}$.
+\item[(b)] $\dg(h\cdot R) = \dg(h) + \nb{h} + \dg(R)$, and if $R$ ends in an $x$ letter, so does $h\cdot R$.
+\item[(c)] If the slacks in $h$ placed from $\ell_0$, and in $R$ placed from $\ell_0 + \dg(h) - 1$, are at most $\rho$, then so are those in $h\cdot R$ placed from $\ell_0 - 1$.
+\end{enumerate}
+\end{lemma}
+
+\begin{proof}
+For (a) and (b), we use induction on $h$ with one letter $l$ at a time. If $l = \B^{n+1}Z$, then $l\,\hatw{R} = \B(\B^nZ)\hatw{R}$ is literally $\widehat{l\cdot R}$, and adding $\B^nZ$ adds $\dg(l)$. If $l = b_0$, we need $\B\hatw{R} \eqb \widehat{\up R}$, which follows from~\eqref{eq:dist} by induction on $R$, and the raising keeps the degree, with $\dg(b_0)+1 = 0$. For (c), let $h = l\,h'$. The hypothesis on $R$ is the hypothesis for $h'$ with $\ell_1 = \ell_0 + \dg(l)$, since $\ell_1 + \dg(h') - 1 = \ell_0 + \dg(h) - 1$, so that by induction $h'\cdot R$ is bounded from $\ell_1 - 1 = \ell_0 + \dg(l) - 1$. If $l = \B^{n+1}Z$, then $\B^nZ$ at height $\ell_0-1$ has the slack of $l$ at $\ell_0$, and $h'\cdot R$ keeps its heights. If $l = b_0$, then $h'\cdot R$ was placed from $\ell_0-2$, and raising it, from $\ell_0-1$, raises heights and levels by one, which leaves its slacks unchanged.
+\end{proof}
+
+\runin{States.} The same word $R$ is read twice in a state, once as the function and once as the copied argument. An $x$ letter allows only one starting height, so that the two readings agree, and this is where aliveness constrains the later rounds.
+
+\begin{lemma}\label{lem:state}
+At a state: $S$ walks from $0$, $\dg(S) \geq 0$, $R$ walks from $\dg(S)$, and $\dg(R) = 1$.
+\end{lemma}
+
+\begin{proof}
+The list rule on $S$ with $\xi = \M\hatw{R}$ shows that $S$ walks from $0$ and $X \eqb x^n(\M\,\hatw{R}\,\bar e)$ with $\bar e$ of length $\dg(S)$, which is therefore not negative. Now $\M\,\hatw{R}\,\bar e \eqb R[\hatw{R}]\,\bar e$, and the list rule on $R$ shows that $R$ walks from $\dg(S)$ and that the term is $\beta$-equal to $x^{n'}(\hatw{R}\,\bar s)$ with $\bar s$ of length $\dg(S) + \dg(R)$. As $R$ ends in an $x$ letter, $\hatw{R}$ is $x$ or is $\beta$-equal to an abstraction, hence not alive, and so $\bar s = s\,\bar r$ is non-empty. Then $\hatw{R}\,s\,\bar r \eqb R[s]\,\bar r$, and the list rule shows that $R$ walks from $\dg(S) + \dg(R) - 1$. Remark (a) gives $\dg(R) = 1$.
+\end{proof}
+
+\begin{lemma}[Start and next state]\label{lem:next}
+(a) The word $P$ has a letter $m_0$, and if $P = S\,m_0\,h$ with $h$ free of $m_0$, then $(S,\ h\cdot x_0)$ is a state. (b) If $(S,R)$ is a state, then $SR$ has a letter $m_0$, and if $SR = S'\,m_0\,h$ with $h$ free of $m_0$, then $h$ is free of $x_0$ and $(S',\ h\cdot R)$ is a state.
+\end{lemma}
+
+\begin{proof}
+(a) If $P$ is empty, then $P[x] = x$ is not alive. By the list rule $P$ walks from $0$, so its first letter is $m_0$. As $h$ has no $x$ letter, Lemma~\ref{lem:pop} gives $X = S[\M\,h[x]] \eqb S[\M\,\widehat{h\cdot x_0}]$. (b) By Lemma~\ref{lem:state}, $SR$ walks from $0$ with degree $\dg(S)+1 \geq 1$, so that it has a letter $m_0$ by remark (c). This letter has height $\dg(S') \geq 0$, so $h$ walks from a height at least one and has no $x_0$ by remark (b). Next, $S[\M\,\hatw{R}] \eqb S[R[\hatw{R}]] = S'[\M\,h[\hatw{R}]] \eqb S'[\M\,\widehat{h\cdot R}]$ by Lemma~\ref{lem:pop}(a), and the last letter is an $x$ letter by Lemma~\ref{lem:pop}(b).
+\end{proof}
+
+\begin{lemma}[The search stops]\label{lem:run}
+There is a state $(S,\ c\,m_0\,g)$ in which all letters of $g$ have level at least one.
+\end{lemma}
+
+\begin{proof}
+Let the integer $\rho$ bound the slacks of $P$ placed from $0$. At each state $(S,R)$ we keep three invariants: the slacks of $S$ from $0$ and of $R$ from $\dg(S)$ are at most $\rho$, and $\dg(S) \leq \rho$. At the first state they follow from Lemma~\ref{lem:pop}(c), with $\ell_0 = \dg(S)+1$ and $R = x_0$, because the letter $m_0$ of $P$ at height $\dg(S)$ has slack $\dg(S)$.
+
+Consider a step as in Lemma~\ref{lem:next}(b). Lemma~\ref{lem:state} on both states and Lemma~\ref{lem:pop}(b) give $1 = \dg(h) + \nb{h} + 1$, that is, $\dg(h) = -\nb{h}$. From $SR = S'm_0h$ we have $\dg(S) + 1 = \dg(S') + 1 + \dg(h)$, and therefore
+\[
+\dg(S') = \dg(S) + \nb{h}.
+\]
+The invariants pass on. The word $SR$ placed from $0$ has slacks at most $\rho$, and so have its parts $S'$, from $0$, and $h$, from $\ell_0 = \dg(S')+1$. Moreover $R$ is placed from $\dg(S) = \ell_0 + \dg(h) - 1$, so Lemma~\ref{lem:pop}(c) places $h\cdot R$ from $\dg(S')$. The letter $m_0$, at height $\dg(S')$ and level $0$, has slack $\dg(S') \leq \rho$.
+
+If $\nb{h} \geq 1$, then $\dg(S)$ rises. If $\nb{h} = 0$ and the letter $m_0$ lies in $S$, then $\dg(S)$ stays and $S'$ is shorter than $S$. If $\nb{h} = 0$ and this $m_0$ lies in $R$, then $R = c\,m_0\,h$, and the letters of $h$ are none of $m_0,x_0,b_0$, so they have level at least one, and we stop. In the other two cases the pair $(\rho - \dg(S),\ \text{length of } S)$ of natural numbers falls in the lexicographic order, so the search stops. We have seen the middle case in computation: from the word $m_0\,m_0\,m_0\,b_1\,m_0\,b_0\,m_1\,m_1\,b_0\,b_1\,b_0$ the first pair has its next $m_0$ in $S$ and $\nb{h} = 0$, and a head run of its term printed more than $1000$ copies of $x$; we do not prove that this term is alive.
+\end{proof}
+
+\begin{proof}[Proof of Theorem~\ref{thm:shape}]
+Take the state of Lemma~\ref{lem:run}, with $L = S$ and $R = c\,m_0\,g$. Then $g = \up d$ for a list $d$. The last letter of $R$ is an $x$ letter and $m_0$ is not, so $g$ is non-empty and $d$ ends in an $x$ letter. By $\B$-steps, $g[\xi]\,z \eqb d[\xi z]$. Also $g[y]$ is $\beta$-equal to an abstraction, and so $g[y] \eqb \lambda w.g[y]w \eqb \Del{y}$; no $\eta$ is used, since $t \eqb \lambda w.q$ with $w$ not free in $t$ implies $\lambda w.tw \eqb t$. In the same way, since $R$ has at least two letters, $\hatw{R} \eqb \lambda y.\hatw{R}y \eqb \lambda y.R[y] = \lambda y.c[\M\,g[y]] \eqb \lambda y.c[\Del{y}\Del{y}] = a$. Therefore $X \eqb S[\M\,\hatw{R}] \eqb L[aa]$.
+\end{proof}
+
+\runin{Where the basis is used.} In a word over $m_n,b_n$ applied to $x$, the symbol $x$ is the last leaf, and the fold keeps it last. This is the last-leaf property of Statman~\cite[Lemma~2]{statman1993} and Imamura~\cite[Lemma~3.2]{imamura1}. With $\Cc$, $x$ can leave the last place: $\B\M(\Cc\B\M)x$ reduces to $\M(\B x\M)$, whose word $x_0\,m_0$ has degree $1$ and walks from $0$, so that only the clause ``ends in an $x$ letter'' excludes it. With $\W$, $x$ stays last on these terms and Statman's first-argument lemma survives~\cite[p.~116]{statman2017}, but the copied term need not grow (Section~\ref{sec:rounds}). The converse of the theorem fails: for $P = m_0\,b_1\,m_1\,b_0$, we have $P[x] \eqb aa$ with $a = \lambda y.\B(\Del{y}\Del{y})$ and $\Del{y} = \lambda w.x(yw)$, and head reduction takes $aa$ to an abstraction.
+
+\section{Separation: the invariant in general}\label{sec:partC}
+
+The proof of Proposition~\ref{prop:T} carries over to core terms, with two additions. Letters do not leave a clean prefix $x^m$: the letter $\M$ turns $t$ into $t\,t$, which leaves an extra argument, and $\B$ turns $t$ into $\lambda gz.t(gz)$, which leaves binders. We therefore allow any context around the head path, and count only the copies of $x$ that stand on that path. And since a term no longer shows its factors, we need a reader for the pair $(i,j)$.
+
+\begin{definition}\label{def:family}
+\emph{Contexts} are generated by $C ::= [\,] \mid x\,C \mid \lambda v.C \mid C\,E$, with $E$ any term, and the \emph{count} $\cnt{C}$ is the number of constructors $x\,C$ on the path to the hole; occurrences of $x$ inside a term $E$ do not count. Fix an integer $\sigma \geq 0$. For variables $u \neq w$, the sets $\Fam_k$, $\Bod_k(u)$, $\mathcal{D}_k(u,w)$ and $\Hst(k,j)$ are the least sets with
+\begin{gather*}
+\frac{b \in \Bod_k(u)}{\lambda u.b \in \Fam_k}\qquad
+\frac{d \in \mathcal{D}_\sigma(u,w)}{u(\lambda w.d) \in \Bod_0(u)}\;\text{(copy)}\qquad
+\frac{s \in \Fam_k}{su \in \Bod_k(u)}\;\text{(lift)}\\
+uw \in \mathcal{D}_0(u,w)\qquad
+\frac{s \in \Fam_k \quad r \in \Fam_j}{sr \in \Hst(k,j)}
+\end{gather*}
+and, for $\mathcal{S}_k$ any of $\Bod_k(u)$, $\mathcal{D}_k(u,w)$, $\Hst(k,j)$, the rules: if $t \in \mathcal{S}_k$, then $x\,t \in \mathcal{S}_{k+1}$, $t\,E \in \mathcal{S}_k$ for any term $E$, and $\lambda v.t \in \mathcal{S}_k$ for $v$ not a head variable $u,w$ of $\mathcal{S}$. The \emph{value} of $(i,j)$ is $\Psi(i,j) = 2\sigma i - j(j-\sigma)$.
+\end{definition}
+
+So a member of $\Bod_k(u)$ is $C[u\,D]$ with $\cnt{C} = k$ and $D = \lambda w.C'[uw]$, $\cnt{C'} = \sigma$, or $C[su]$ with $s \in \Fam_{k-\cnt{C}}$, and a member of $\Hst(i,j)$ is $C[sr]$ with $s \in \Fam_{i-\cnt{C}}$ and $r \in \Fam_j$; induction ``on the rules'' below is on these derivations. Filling a hole is not capture-avoiding: a context may bind variables free in its filler, but it never binds $u$ or $w$. For example, at $\sigma = 1$, the term $\lambda v.(\lambda u.(u\,\Dd{u})v)f_1$ is in $\Hst(0,1)$, and $\lambda v.[\,]$ binds $v$ in the filler. Restricted to $C = x^m$, $\sigma = 1$ and terms with no free variable, these are the sets of Definition~\ref{def:Tfamily}, and $\Psi$ is the value there. The clause on $w$ in Section~\ref{sec:prelim} excludes $\lambda u.x(u(\lambda u.x(uu)))$ from (copy). The convention on $x$ is essential as well: if a binder could be named $x$, then $\lambda w.(\lambda x.x(uw))\I$ would have count $1$, and with this $D$ the term $a = \lambda u.x(uD)$ would lie in $\Fam_1$ at $\sigma = 1$, although again $aa \eqb x(aa)$. With $x$ reserved, $(\lambda z.z(uw))\I$ has no form $C'[uw]$, so this $a$ is in no $\Fam_k$; only its reduct $\lambda u.x(u(\lambda w.uw))$ is in $\Fam_1$, at $\sigma = 0$.
+
+The family works for one reason: a context never binds the head variable of a filler, so a term $E$ never reaches the head, and an $x$ in $E$ never prints. Take $L = m_0$, $c = b_1$, $d = x_0$, so that $\sigma = 1$. Then $Q$ reduces to $t = (a'a')E$, with $E = a'a'$ and $a' = \lambda yzgz'.(x(y\,\Dd{y}))\,z\,(gz') \in \Fam_1$, and $t \in \Hst(1,1)$. Contracting $a'a'$ gives $(\lambda zgz'.(x(a'\,\Dd{a'}))\,z\,(gz'))E$, in $\Hst(2,2)$, with the filler $a'\,\Dd{a'}$. Contracting next the redex of the context gives $\lambda gz'.(x(a'\,\Dd{a'}))\,E\,(gz')$, with the same filler and pair; $E$ has moved, but only among the arguments.
+
+Contexts compose, with $\cnt{C[C'[\cdot]]} = \cnt{C}+\cnt{C'}$. Substitution acts on the term $C[t]$ and avoids capture: if a binder of $C$ is the substituted variable or is free in $N$, we first rename it, which gives $C[t] =_\alpha C_1[t_1]$, where $t_1$ is $t$ with the same renaming. Then $C_1[t_1][N/z] = C_1^*[t_1[N/z]]$ with $\cnt{C_1^*} = \cnt{C}$, where $C_1^*$ has the substitution done in its terms $E$. The fillers $uD$, $uw$, $su$ and $sr$ of the family are applications.
+
+\begin{lemma}\label{lem:sub}
+For a variable $z$ and a term $N$, the sets $\Fam_k$ and $\Hst(i,j)$ are stable under $[N/z]$. If $z \neq u$, then $b \in \Bod_k(u)$ gives $b[N/z] \in \Bod_k(u)$, and, if also $z \neq w$, likewise for $\mathcal{D}_k(u,w)$. For a variable $y$, $b \in \Bod_k(u)$ gives $b[y/u] \in \Bod_k(y)$.
+\end{lemma}
+
+\begin{proof}
+By induction on the rules. A renaming of a context binder is itself a substitution by a variable, of a binder other than $u,w$, on a smaller derivation. After renaming, a substitution changes only terms $E$ and the subterms $s$, $r$, $D$, and it does not touch $x$, so counts stay. The fillers $uD$, $uw$, $su$ keep their form, also when $u$ is replaced by $y$. Binders are renamed away from $y$, so that $y$ stays unbound.
+\end{proof}
+
+\begin{lemma}\label{lem:stepF}
+If $t \in \Fam_k$ and $t \bred t'$, then $t' \in \Fam_k$. The same holds for $\Bod_k(u)$.
+\end{lemma}
+
+\begin{proof}
+By induction on the rules. Let $b = C[f]$ with $f$ the filler. The redex lies in one of five places. In a term $E$, nothing else changes. A redex of $C$ itself has the form $(\lambda v.C_1[f])E$, and its contractum is $C_1^*[f[E/v]]$ with $v \neq u,w$, a member of the same count by Lemma~\ref{lem:sub}. In $f = uD$, the redex is inside $D$, in one of these two places for $C'$, since $uw$ is normal, and the count of $C'$ stays $\sigma$. In $f = su$ inside $s$, we use induction. Finally, for $f = su$ itself, with $s = \lambda v.b_1$ and $b_1 \in \Bod_{k-m}(v)$, the contractum is $b_1[u/v] \in \Bod_{k-m}(u)$ by Lemma~\ref{lem:sub}, and its context composes with $C$. There is no other redex: $f\,E$ is not one, as $f$ is an application, and neither is $x\,t$, as $x$ is a constant.
+\end{proof}
+
+The next lemma is the conservation law~\eqref{eq:rule}, now in the form $(i,j) \mapsto (i+j,\ j+\sigma)$.
+
+\begin{lemma}\label{lem:stepH}
+If $t \in \Hst(i,j)$ and $t \bred t'$, then $t' \in \Hst(i',j')$ with $\Psi(i',j') = \Psi(i,j)$. Also $x^q\,t \in \Hst(i+q,j)$, and $\Psi(i+q,j) = \Psi(i,j)+2\sigma q$.
+\end{lemma}
+
+\begin{proof}
+Let $t = C[sr]$ with $\cnt{C} = m$. A redex in $C$, in $s$ or in $r$ is as in Lemma~\ref{lem:stepF}, so only the redex $sr$ remains, with $s = \lambda u.b \in \Fam_{i-m}$. If $b = C_1[u\,D]$ with $D = \lambda w.C'[uw]$ and $\cnt{C_1} = i-m$, the contractum is $C_1^*[r\,D_r]$ with $D_r = \lambda w.C'^*[rw]$. Since $r \in \Fam_j$, rule (lift) gives $D_r \in \Fam_{j+\sigma}$. So $t'$ has context count $i$, function $r \in \Fam_j$ and argument in $\Fam_{j+\sigma}$, which puts it in $\Hst(i+j,\ j+\sigma)$, and $\Psi(i+j,j+\sigma) = 2\sigma i + 2\sigma j - (j+\sigma)j = \Psi(i,j)$. If $b = C_1[s_1u]$ with $\cnt{C_1} = l$ and $s_1 \in \Fam_{i-m-l}$, the contractum is $C_1^*[s_1^*r]$, so $t' \in \Hst(i,j)$. For $x^q\,t$, the context is $x^q\,C$.
+\end{proof}
+
+The value must be a function of the term. For $\T$ one reads $i$ and $j$ from the shape, but a context can contain a redex $(\lambda v.C[f])E$ of the same outer form as $sr$. Compare $(\lambda v.f_1r)E$ with $f_1r$: in the first, the head variable of the body is not the binder $v$, so the argument $E$ is passed over; in the second, the head variable of the body of $f_1$ is its own binder, which selects the argument $r$. The reader $\rd$ follows the head path, makes this test, and at $sr$ reads the second factor.
+
+\begin{lemma}\label{lem:read}
+Let $\hx$ be as in Section~\ref{sec:invariant}, on all terms. Define $\rd(t)$, which is a variable, a number or $\bot$, by
+\begin{align*}
+&\rd(v) = v,\quad \rd(x) = \bot,\quad \rd(x\,e) = \rd(e),\quad \rd(v\,e) = v,\quad \rd(f\,g\,e) = \rd(f\,g),\\
+&\rd(\lambda v.b) = \bot \text{ if } \rd(b) = v, \text{ else } \rd(b),\\
+&\rd((\lambda v.b)\,e) = \begin{cases} e \text{ if } e \text{ is a variable, else } \hx(e) & \text{if } \rd(b) = v,\\ \rd(\lambda v.b) & \text{otherwise.}\end{cases}
+\end{align*}
+If $t \in \Hst(i,j)$, then $\hx(t) = i$ and $\rd(t) = j$. So $(i,j)$ depends only on $t$.
+\end{lemma}
+
+\begin{proof}
+By induction on the rules. No member of a set is $x$ itself, so $\hx(x\,t) = \hx(t)+1$, $\hx(\lambda v.t) = \hx(t)$ and $\hx(t\,E) = \hx(t)$ give $\hx = k$ on $\Bod_k(u)$ and on $\Fam_k$, and $\hx = i$ on $\Hst(i,j)$. Next, a context does not change the value of $\rd$ on a filler if this value is not a variable that the context binds, and it is $u$ or a number, while no context binds $u$. For (copy), $\rd(uD) = u$. For (lift), $\rd(su) = u$, since $s = \lambda v.b_1$ with $\rd(b_1) = v$. For $\Hst$, $\rd(sr) = \hx(r) = j$, since $\rd(b) = u$ and $r$ is an abstraction.
+\end{proof}
+
+\begin{theorem}\label{thm:state}
+If $\sigma \geq 1$, $t \in \Hst(i,j)$ and $q \geq 1$, then $t \neqb x^qt$.
+\end{theorem}
+
+\begin{proof}
+Suppose $t \eqb x^qt$. By Church--Rosser the two terms have a common reduct $z$. By Lemma~\ref{lem:stepH}, $z \in \Hst(i',j')$ with $\Psi(i',j') = \Psi(i,j)$, and $z \in \Hst(i'',j'')$ with $\Psi(i'',j'') = \Psi(i,j)+2\sigma q$. By Lemma~\ref{lem:read}, $(i',j') = (i'',j'')$, which gives $2\sigma q = 0$, a contradiction.
+\end{proof}
+
+The hypothesis $\sigma \geq 1$ is needed (\lean{G2.sigma\_zero\_control}). Let $a_0 = \lambda y.x(y(\lambda w.yw))$, which is in $\Fam_1$ at $\sigma = 0$. Then $a_0a_0 \bred x(a_0(\lambda w.a_0w)) \bred x(a_0a_0)$, because $\lambda w.a_0w \bred a_0$ by a $\beta$-step inside. The term $a_0$ is an $\eta$-expansion of $\om$, so the fixed point $F_x$ corresponds to $\sigma = 0$. The $x$ letter of Theorem~\ref{thm:shape} must also lie in $d$: with $c = x_0$ and $d$ empty, so that $a = \lambda y.x(\Del{y}\Del{y})$ and $\Del{y} = \lambda w.yw$, we have $aa \breds x(aa)$.
+
+Letters join Shape to this family; they are why the rules $\lambda v.C$ and $C\,E$ are there.
+
+\begin{lemma}\label{lem:letter}
+For a letter $l$ and a term $t$, $l\,t \breds C[t]$, where $C$ binds no variable free in $t$, with $\cnt{C} = 1$ if $l$ is an $x$ letter and $\cnt{C} = 0$ otherwise. By induction, $\pi[t] \breds C[t]$, where $C$ binds no variable free in $t$ and $\cnt{C}$ is the number of $x$ letters in $\pi$.
+\end{lemma}
+
+\begin{proof}
+By induction on the level, with the binders $g,z$ below fresh for $t$ and different from $u,w$. We have $x\,t = (x\,[\,])[t]$, $\M t \bred t\,t = ([\,]\,t)[t]$, and $\B t \bred \lambda gz.t(gz) = (\lambda gz.[\,](gz))[t]$. For $l = \B v$, $\B v\,t \breds \lambda z.v(tz)$, and by induction $v(tz) \breds C_v[tz]$, so that the context is $\lambda z.C_v[[\,]z]$.
+\end{proof}
+
+\begin{theorem}[Separation]\label{thm:core}
+Let $L$, $c$, $d$ be lists of letters, with an $x$ letter in $d$, and let $Q$, $a$, $\Del{y}$ be as in Theorem~\ref{thm:shape}. Then $Q \neqb x^qQ$ for each $q \geq 1$.
+\end{theorem}
+
+\begin{proof}
+Let $\sigma$, $e_c$, $e_L$ be the numbers of $x$ letters in $d$, $c$, $L$, so that $\sigma \geq 1$. By Lemma~\ref{lem:letter}, $\Del{y} \breds D' = \lambda w.C'[yw]$ with $\cnt{C'} = \sigma$. Next, $\Del{y}\Del{y} \bred d[y\,\Del{y}] \breds d[y\,D'] \breds C''[y\,D']$ with $\cnt{C''} = \sigma$, and $c[C''[yD']] \breds C_3[C''[yD']]$ with $\cnt{C_3} = e_c$. So $a \breds a' = \lambda y.C_3[C''[yD']]$, which is in $\Fam_{e_c+\sigma}$ by (copy), and $Q \breds C_0[a'a'] =: t \in \Hst(e_L+e_c+\sigma,\ e_c+\sigma)$. If $Q \eqb x^qQ$, then $t \eqb x^qt$, contradicting Theorem~\ref{thm:state}.
+\end{proof}
+
+\section{Proof of the main theorem}\label{sec:proof}
+
+\emph{Closed $Y$.} Suppose $Yx \eqbe x^q(Yx)$ with $q \geq 1$. Proposition~\ref{prop:A} gives a word $P$ over $m_n,b_n$ with $P[x] \eqb x^qP[x]$, so that $P[x]$ is alive, and Theorem~\ref{thm:shape} gives a core term $Q$ with $P[x] \eqb Q$. Then $Q \eqb x^qQ$, contradicting Theorem~\ref{thm:core}.
+
+\emph{Open $Y$.} Let $Y'$ be $Y$ with $\I$ substituted for each variable other than $x$. Then $Y'$ is a combination, and an equation $Yx \eqbe x^q(Yx)$ survives the substitution, since $x$ is not affected. This step is by hand and is not in Lean. The claims at $\eqb$ and $\eqw$ follow, as these relations lie inside $\eqbe$. \hfill$\square$
+
+\section{The Lean development}\label{sec:lean}
+
+The closed case of Theorem~\ref{thm:main} is \lean{TBeta.no\_fix\_xr}, with $x$ the constant \lean{Term.x}, which no binder binds and substitution does not touch. From it follow \lean{no\_fixed\_\allowbreak point\_\allowbreak combinator}, \lean{no\_fix\_var} for a free variable in place of the constant, and \lean{no\_weak\_xr} at $\eqw$. Open $Y$ is not in Lean: on the route of the proof, it is the one step by hand. The release is the archive \lean{min2\_final5.tar.gz}, with SHA-256\\ {\small\lean{70d869915b1294807708ba0835bc73cc8ffa9dc35ed74276a53dcadf2443acab}}, for Lean 4.33.1, with no external library; it is in the repository that holds this text, and no DOI exists yet. Its \lean{README.md} gives the one command, \lean{bash scripts/check.sh}, which builds from empty and runs the checks; \lean{Audit.lean} restates the main types, and \lean{TABLE.md} is the full map. Appendix~\ref{app:table} says what a reader must read, gives the line counts, and maps the statements of this text to Lean names.
+
+\section{Related work}\label{sec:related}
+
+\runin{Origin of the question.} The combinators $\B$ and $\M$ and the fixed point $F_x$ are in Smullyan's book~\cite{smullyan}. Its printed open problems (pp.~132--133) ask for a sage bird from one regular combinator, or from $\B$ and one other regular combinator, and $\M$ is not regular (p.~131). We could not find the question for $\{\B,\M\}$ in the first edition. McCune and Wos~\cite{mccunewos} report it as a question that Smullyan gave them in correspondence in 1986, as an equational question in weak combinatory logic, and state the negative answer as Conjecture~1, attributed to Smullyan. It is Problem~4 of the TLCA list~\cite{tlca}, which refers to the book. Statman~\cite{statman2011,statman2017} says that the book asks it for $\B,\I,\M$. On this reading at $\eqw$, Imamura's preprint answers it; we know of no refereed version of his two preprints. Theorem~\ref{thm:main} answers his Problem~5.1~\cite{imamura1} and the question at $\eqb$ and $\eqbe$.
+
+\runin{Reduction.} Statman~\cite{statman1993} proved that no $\B,\M$-combination has $Yx \wreds x(Yx)$. He states that Wos and McCune obtained this by a different method; his only reference to them is a preprint of October 1988~\cite{wosmccune88}. Their published paper~\cite{mccunewos} leaves $\{\B,\M\}$ open as above, although the TLCA list cites both papers for the reduction result.
+
+\runin{Polynomials and the first print.} Statman~\cite[Lemma~1]{statman1993} proves the weak normal form for reduction to a term with head $x$. In~\cite[Lemma~0.1]{statman2011} and~\cite[Lemma~6.2.1]{statman2017} he shows it for weak conversion, with the first variable at the head, so that $X$ is $\beta\eta$-equal to a polynomial or to $\I$ (Corollary~6.2.1). Neither text goes from $\eqbe$ to a weak head run for a term not known to have a weak normal form; his Lemma~6.2.2 does so for a term that has one, and our Lemma~\ref{lem:reach} takes this step on $\lambda$-terms. Our Lemma~\ref{lem:first} has the case analysis of his lemma, with any terms as arguments in place of fresh variables, and it gives the word directly, with no weak normal form. In~\cite{statman2017} he characterizes the \emph{mimids}, the terms $F$ with $Fx = xX$ for some $X$, by arithmetic conditions on the polynomial: the first monomial is $\M$ (Fact~3), the sequence of $\M$ and $\B$ letters is balanced (Lemma~6.2.3), and each index $n$ is bounded by the current number of arguments (Corollary~6.2.2, Lemma~6.2.4, Theorem~6.2.1). The polynomial form, the first letter and the rule for the walk to the first $x$ are thus his. A mimid has one print, with an arbitrary $X$, and his chapter does not treat the later ones.
+
+\runin{Non-convertibility methods.} Endrullis et al.~\cite{endrullis} separate $\beta$-inequal terms with equal Böhm trees by clocks on the head reductions. Reduction can only improve a clock (their Proposition~4.5), and the Church--Rosser theorem then gives their Theorem~4.6. They also note that such problems can often be solved by ``a suitable invariant for all the $\beta$-reducts'' (p.~2), and Separation is of that kind. On $\T$ the two methods meet, by a hand argument that is not in Lean. The terms $x(f_1f_2)$ and $x(f_1f_1)$ have the same clocked Böhm tree, so these representatives give nothing, but their Theorem~4.6 allows others (p.~13). Number the printed copies of $x$ from $1$, and put $p_h = 2+h(h+1)/2$. With $g_2 = \lambda u.x^2(u\,\Dd{u})$, the term $x^2(f_1g_2)$ is a reduct of $x(f_1f_1)$ with clock $0$ at $p_h$ for $h \geq 2$: a round ends with $g_2t \hred x^2(t\,\Dd{t})$, one step for two copies. Each reduct of $f_1f_1$ is $x^m(sr)$ with $i = 1+j(j-1)/2$, and its rounds after $s$ have the functions $D^nr$, with $D^0r = r$ and $D^{n+1}r = \Dd{D^nr}$. Round $n$ begins after $i+nj+n(n-1)/2$ printed copies, and for $n \geq 1$ its first copy takes one head step, as $D^nr$ is $\lambda w.x(\ldots)$. This is position $p_h$ with $h = j+n-1$, where the clock is $1$. So no reduct of $f_1f_1$ improves the term, and their Theorem~4.6 gives $\T x \neqb x(\T x)$. This needs the family of Proposition~\ref{prop:T}. We do not know whether clocks handle all core terms; our argument is a direct separation.
+
+\runin{Limits of our literature check.} A search of arXiv and the web on 31~October 2026 found only Imamura's two preprints on this question. We did not read Barendregt's book, the report ANL-88-10, which McCune and Wos call a full account of their work, the 1988 preprint~\cite{wosmccune88}, Statman's paper on near semi-rings cited in~\cite[p.~122]{statman2017}, the Oxford edition of Smullyan's book, or the 1986 correspondence of Smullyan and Statman.
+
+\section{Extensions and open questions}\label{sec:limits}
+
+The theorem does not classify bases. Imamura's $\mathrm{Tr}_x$ fails at $\eqb$ through its normal-form clause; is its trace class $\beta$-invariant on terms with no weak normal form? If so, his Lemma~3.5 would end the $\beta$ case, and Section~\ref{sec:partC} may be related to that invariance on core terms; we have not proved this. Imamura~\cite[Problem~5.1]{imamura2} asks what properties of the reduction rules decide the matter; the comparison of $\M$ and $\W$ in Section~\ref{sec:rounds} is a remark on this, and not an answer. Is it decidable whether the term of a word over $m_n,b_n$ is alive? The shape of Theorem~\ref{thm:shape} is necessary but not sufficient. Do clocks separate all core terms from $x^q$ of themselves? Finally, $\T$ is a fixed-point combinator in the theories that contain Böhm-tree equality and not in $\lambda\beta\eta$: is there a structural description of the $\lambda$-theory generated by $\T x = x(\T x)$, and is it decidable?
+
+\section*{Provenance and verification}\label{sec:provenance}
+\addcontentsline{toc}{section}{Provenance and verification}
+
+AI systems did the work on the proof and on this text, and AI systems did all reviews of it up to this version. These reviews are not independent confirmation. This text has not been peer reviewed. As far as we know, no human has read the formal proof or a written proof in full.
+
+A proof of the closed case of Theorem~\ref{thm:main} in Lean~4, along the route of this text, is in the release of Section~\ref{sec:lean}. The kernel reports only the standard axioms \lean{propext}, \lean{Classical.choice}, \lean{Quot.sound}. The release has been rebuilt from the archive with \lean{-{}-no-cache}, and \lean{leanchecker} on all modules, and with \lean{-{}-fresh} on the main module, passes. The restatement in \lean{TBeta/Restate.lean} type-checks. All of this ran on one machine with one toolchain, so it is not an independent replay. AI systems compared this text with the formal statements (Appendix~\ref{app:table}); no human has done so.
+
+\begin{thebibliography}{10}
+
+\bibitem{barendregt}
+H.~Barendregt.
+\newblock {\em The Lambda Calculus: Its Syntax and Semantics}.
+\newblock North-Holland, revised edition, 1984.
+
+\bibitem{endrullis}
+J.~Endrullis, D.~Hendriks, J.~W.~Klop, and A.~Polonsky.
+\newblock Discriminating lambda-terms using clocked Böhm trees.
+\newblock {\em Logical Methods in Computer Science}, 10(2:4), 2014.
+\newblock doi:10.2168/LMCS-10(2:4)2014.
+
+\bibitem{imamura1}
+Takuma Imamura.
+\newblock Bluebirds and mockingbirds cannot produce a fixed-point combinator.
+\newblock Preprint, arXiv:2609.21765v3, 14 October 2026.
+
+\bibitem{imamura2}
+Takuma Imamura.
+\newblock Finite {BM}-algebras and fixed-point combinators.
+\newblock Preprint, arXiv:2610.37108v1, 27 October 2026.
+
+\bibitem{mccunewos}
+W.~McCune and L.~Wos.
+\newblock The absence and the presence of fixed point combinators.
+\newblock {\em Theoretical Computer Science}, 87(1):221--228, 1991.
+\newblock doi:10.1016/0304-3975(91)90034-Y.
+
+\bibitem{smullyan}
+R.~Smullyan.
+\newblock {\em To Mock a Mockingbird, and Other Logic Puzzles}.
+\newblock Alfred A. Knopf, New York, 1985. First edition.
+
+\bibitem{statman1993}
+R.~Statman.
+\newblock Some examples of non-existent combinators.
+\newblock {\em Theoretical Computer Science}, 121(1--2):441--448, 1993.
+\newblock doi:10.1016/0304-3975(93)90096-C.
+
+\bibitem{statman2011}
+R.~Statman.
+\newblock To type a mockingbird.
+\newblock Unpublished manuscript, 9~December 2011.
+\newblock \url{https://tlca.di.unito.it/PAPER/TypeMock.pdf}.
+
+\bibitem{statman2017}
+R.~Statman.
+\newblock Some tweets about mockingbirds.
+\newblock In M.~Fitting and B.~Rayman, editors, {\em Raymond Smullyan on Self Reference}, Outstanding Contributions to Logic~14, pages 113--122. Springer, 2017.
+\newblock doi:10.1007/978-3-319-68732-2\_6.
+
+\bibitem{tlca}
+R.~Statman.
+\newblock Problem \#~4.
+\newblock TLCA List of Open Problems, updated 4~February 2014.
+\newblock \url{https://tlca.di.unito.it/opltlca/}.
+
+\bibitem{wosmccune88}
+L.~Wos and W.~McCune.
+\newblock The absence and presence of fixed point combinators.
+\newblock Preprint, Math.\ \& C.\ S., Argonne National Laboratory, October 1988.
+
+\end{thebibliography}
+
+\appendix
+\section{Text to Lean}\label{app:table}
+
+To read the statements, a reader needs the file \lean{LeanJudge/Defs.lean} (126 lines), the predicate \lean{IsFixedPoint\-Combinator} from \lean{LeanJudge/Final.lean} (12 lines), and \lean{xp} from \lean{TBeta/CR.lean}. The file \lean{TBeta/Restate.lean} restates the theorem with its own power of $x$, so that \lean{theorem\_1} there needs only \lean{Defs.lean}. The file \lean{Defs.lean} also defines other atoms ($\W$, $\Cc$, $\mathsf{K}$, $\mathsf{S}$) and weak terms, which the proof of \lean{no\_fix\_xr} does not use. \lean{Tree} is a finite application tree with combinator leaves, read by \lean{Y} as closed $\lambda$-terms. The route takes 2712 used lines, that is, lines of the declarations that a walk of the proof terms reaches from the final theorem: Reduction 596, Shape 813, Separation 676, Church--Rosser 399, base file 96, statement 93, join 39. By \lean{wc -l} the nine route modules have 3127 lines, and all twelve modules 3343, with \lean{Control}, \lean{Corollaries} and \lean{Restate} outside the route.
+
+Conversion and the main statement read as follows, where \lean{Root} is $\beta$ at the root and, for \lean{e = true}, $\eta$; \lean{Step} closes it under all contexts; \lean{Conv false} is $\eqb$ and \lean{Conv true} is $\eqbe$.
+{\small
+\begin{verbatim}
+inductive Conv (e : Bool) : Term -> Term -> Prop
+  | refl (t) : Conv e t t
+  | step {t u} : Step e t u -> Conv e t u
+  | symm {t u} : Conv e t u -> Conv e u t
+  | trans {t u v} : Conv e t u -> Conv e u v -> Conv e t v
+
+def IsFixedPointCombinator (e : Bool) (t : Tree) : Prop :=
+  forall M : Term, Conv e (.app (Y t) M) (.app M (.app (Y t) M))
+
+def xp : Nat -> Term -> Term
+  | 0, t => t
+  | n + 1, t => .app .x (xp n t)
+
+theorem TBeta.no_fix_xr (e : Bool) (t : Tree)
+    (ht : t.over [.B, .M, .I] = true) {r : Nat} (hr : 1 <= r) :
+    Not (Conv e (.app (Y t) .x) (xp r (.app (Y t) .x)))
+\end{verbatim}
+}
+
+Namespaces are \lean{PartA} (Section~\ref{sec:partA}), \lean{TBeta.N} and \lean{TBeta} (Section~\ref{sec:partB}), \lean{TBeta.G2} (Section~\ref{sec:partC}), and \lean{TBeta} (join). Throughout, $x$ is the constant \lean{Term.x}. Status compares the Lean type with the statement in the text: \emph{exact}; \emph{stronger}, the Lean type implies the text; \emph{restricted}, the Lean type is narrower, as noted; \emph{local}, a step inside the proof of the declaration named; \emph{def}, a definition. The fold is \lean{pop}, the slack bound is \lean{Bd}, a context is not an object in Lean but the rules \lean{cx}, \lean{cl}, \lean{ca} of \lean{G}, the sets of Section~\ref{sec:partC} are \lean{G} with kinds \lean{Kd}, \lean{Hk}, and $\Psi$ is \lean{val}. Proposition~\ref{prop:T} is not stated in Lean; it is an instance of \lean{state\_not\_fix} after $\T x \breds f_1f_1$.
+
+{\footnotesize
+\begin{longtable}{@{}p{0.29\linewidth}p{0.37\linewidth}p{0.27\linewidth}@{}}
+\toprule
+Text & Lean name & Status\\
+\midrule
+\endhead
+Theorem~\ref{thm:main}, closed $Y$ & \lean{no\_fix\_xr}; \lean{Restate.theorem\_1} & exact, with $x$ the constant; open $Y$ is not in Lean\\
+Same, for a free variable & \lean{no\_fix\_var}, \lean{iterApp} & exact\\
+Theorem~\ref{thm:main}, at $\eqw$, closed & \lean{no\_weak\_xr}, \lean{xc} & exact, with $x$ the constant\\
+No fixed-point combinator & \lean{no\_fix\_x}, \lean{no\_fixed\_point\_combinator} & exact, with $x$ the constant\\
+Proposition~\ref{prop:A} & \lean{partA} & exact; uniform in \lean{e}, it starts from $\eqbe$\\
+Lemma~\ref{lem:reach} & \lean{HR}, \lean{HR.of\_reds}, \lean{par\_factor}, \lean{par\_run\_vh}, \lean{eta\_run} & restricted: from a $\beta\eta$-reduct; Church--Rosser step local in \lean{partA}\\
+Lemma~\ref{lem:first}, acts as & \lean{first\_arg}, \lean{Rep}, \lean{Rep.BU}, \lean{Rep.BUV} & exact\\
+Lemma~\ref{lem:tidy}: applicative terms are tidy & \lean{J}, \lean{J\_mono}, \lean{J\_S}, \lean{J\_xp} & restricted: \lean{mono}, a word at $x$, and $x^q t$ for tidy $t$; the general sentence is by hand\\
+Lemma~\ref{lem:tidy}: no $\eta$ & \lean{J\_subst}, \lean{J\_step}, \lean{step\_no\_eta}, \lean{J\_conv} & stronger: for all tidy terms\\
+Letters, $\pi[t]$, $\hatw{\pi}$, $\dg$, $\nb{h}$, walks & \lean{Lt}, \lean{lt}, \lean{plug}, \lean{hat}, \lean{dg}, \lean{bz}, \lean{legal}, \lean{Walk} & def\\
+Alive; from $t \eqb x^qt$ & \lean{Alive}, \lean{alive\_of\_fix} & exact\\
+Facts on alive terms & \lean{Alive.conv}, \lean{Alive.peelN}, \lean{not\_alive\_lam}, \lean{not\_alive\_x}, \lean{not\_alive\_two}, \lean{not\_alive\_hat} & exact\\
+Lemma~\ref{lem:list} & \lean{letter}, \lean{list\_rule} & exact\\
+Remarks (a), (b), (c) on walks & \lean{two\_walk}, \lean{walk\_pos}, \lean{walk\_zero} & exact\\
+Fold, Lemma~\ref{lem:pop}(a) & \lean{pop}, \lean{pop\_conv}, \lean{hat\_up}, \lean{fact\_dist} & exact\\
+Lemma~\ref{lem:pop}(b) & \lean{dg\_pop}, \lean{LastX.pop} & exact\\
+Lemma~\ref{lem:pop}(c) & \lean{Bd\_pop}, \lean{Bd\_up} & exact\\
+State, Lemma~\ref{lem:state} & \lean{St}, \lean{LastX}, \lean{St.facts} & exact\\
+Lemma~\ref{lem:next}(a) & \lean{St.init}; \lean{start} & restricted: \lean{St.init} takes the condition on $h$ as a premise; ``$P$ has $m_0$'' is local in \lean{start}\\
+Lemma~\ref{lem:next}(b) & \lean{St.next}, \lean{rsplit}; \lean{run} & restricted: \lean{St.next} takes the condition on $h$; ``$SR$ has $m_0$'' and ``$h$ free of $x_0$'' are local in \lean{run}\\
+Lemma~\ref{lem:run} (the search) & \lean{start}, \lean{run}, \lean{exists\_Bd}, \lean{split\_where}, \lean{level\_of\_bz} & exact\\
+Theorem~\ref{thm:shape} & \lean{shape\_of\_alive}, \lean{St.shape}, \lean{plug\_up\_app}, \lean{exists\_down}, \lean{conv\_eta\_exp} & exact\\
+Definition~\ref{def:family} & \lean{G}, \lean{Kd}, \lean{Hk}, \lean{val} & def; the rules are \lean{mk}, \lean{nf}, \lean{wr}, \lean{dv}, \lean{st}, \lean{cx}, \lean{ca}, \lean{cl}; \lean{cl} may bind filler variables, never the head indices\\
+Lemma~\ref{lem:sub} & \lean{G.sub}, \lean{Mv}, \lean{MK}, \lean{G.shift} & restricted: substitutes for an index, never for $x$; the premise \lean{MK} moves head variables to variables\\
+Lemma~\ref{lem:stepF} & \lean{G.step}, \lean{ctx\_root} & stronger: also covers $D$-bodies\\
+Lemma~\ref{lem:stepH} & \lean{G.transD}, \lean{G.transB}, \lean{G.stepH}, \lean{G.redsH}, \lean{G.cx} & exact; the premise $w < n$ of \lean{G.transD} says that $w$ is inside $u$; the arithmetic for $x^q$ is local in \lean{state\_not\_fix}\\
+Lemma~\ref{lem:read} & \lean{hx}, \lean{rd}, \lean{G.hx}, \lean{G.rd} & exact, with the statement by kind\\
+Theorem~\ref{thm:state} & \lean{state\_not\_fix} & exact\\
+Remark on $\sigma = 0$ & \lean{sigma\_zero\_control} (\lean{TBeta/Control.lean}) & exact for $a_0$; the example with $d$ empty is by hand; not used by the theorem\\
+Lemma~\ref{lem:letter} & \lean{lt\_red}, \lean{plug\_red} & restricted: only for $t$ in the family, with the result in the family\\
+Theorem~\ref{thm:core} & \lean{coreW}, \lean{aT}, \lean{Dy}, \lean{coreW\_state}, \lean{coreW\_not\_fix} & exact; \lean{coreW\_state} gives the indices existentially\\
+Section~\ref{sec:proof}, closed $Y$ & \lean{no\_fix\_xr}, \lean{S\_plug}, \lean{shape\_of\_alive} & exact\\
+Church--Rosser & \lean{church\_rosser} & exact\\
+\bottomrule
+\end{longtable}
+}
+
+\end{document}
